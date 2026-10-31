@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VocabVoice - AI Vocabulary Coach</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6C5CE7;
+            --primary-light: #A29BFE;
+            --primary-dark: #5A4BD1;
+            --accent: #00CEC9;
+            --accent-light: #81ECEC;
+            --bg: #0F0E17;
+            --bg-card: #1A1929;
+            --bg-card-hover: #232238;
+            --text: #FFFFFE;
+            --text-muted: #94A1B2;
+            --success: #00B894;
+            --error: #FF6B6B;
+            --warning: #FDCB6E;
+            --gradient: linear-gradient(135deg, #6C5CE7, #00CEC9);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .bg-animation .circle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.05;
+            animation: float 20s infinite ease-in-out;
+        }
+        .bg-animation .circle:nth-child(1) {
+            width: 500px; height: 500px;
+            background: var(--primary);
+            top: -100px; left: -100px;
+            animation-delay: 0s;
+        }
+        .bg-animation .circle:nth-child(2) {
+            width: 400px; height: 400px;
+            background: var(--accent);
+            bottom: -50px; right: -50px;
+            animation-delay: -5s;
+        }
+        .bg-animation .circle:nth-child(3) {
+            width: 300px; height: 300px;
+            background: var(--primary-light);
+            top: 50%; left: 50%;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(50px, -30px) scale(1.1); }
+            50% { transform: translate(-20px, 50px) scale(0.9); }
+            75% { transform: translate(30px, 20px) scale(1.05); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 30px 0 20px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+        .logo span { font-weight: 300; }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .stat {
+            background: var(--bg-card);
+            border: 1px solid rgba(108,92,231,0.2);
+            border-radius: 12px;
+            padding: 10px 18px;
+            text-align: center;
+            min-width: 100px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 10px 0;
+            max-height: 50vh;
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
+            max-width: 85%;
+        }
+        .message.agent { align-self: flex-start; }
+        .message.user { align-self: flex-end; flex-direction: row-reverse; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-avatar {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .agent .message-avatar { background: var(--gradient); }
+        .user .message-avatar { background: rgba(108,92,231,0.2); }
+
+        .message-bubble {
+            background: var(--bg-card);
+            border: 1px solid rgba(108,92,231,0.15);
+            border-radius: 16px;
+            padding: 12px 16px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .user .message-bubble {
+            background: rgba(108,92,231,0.15);
+            border-color: rgba(108,92,231,0.3);
+        }
+
+        .message-bubble .word-highlight {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--accent);
+            display: block;
+            margin: 4px 0;
+        }
+        .message-bubble .phonetic {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 13px;
+        }
+        .message-bubble .definition {
+            margin: 6px 0;
+            padding-left: 12px;
+            border-left: 3px solid var(--primary);
+        }
+        .message-bubble .example {
+            color: var(--text-muted);
+            font-style: italic;
+            margin-top: 6px;
+        }
+        .message-bubble .result-correct {
+            color: var(--success);
+            font-weight: 600;
+        }
+        .message-bubble .result-wrong {
+            color: var(--error);
+            font-weight: 600;
+        }
+
+        /* Mode Buttons */
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .mode-btn {
+            background: rgba(108,92,231,0.15);
+            border: 1px solid rgba(108,92,231,0.3);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .mode-btn:hover {
+            background: rgba(108,92,231,0.3);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        /* Mic Button */
+        .controls {
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mic-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mic-btn {
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            background: var(--gradient);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+            z-index: 2;
+        }
+        .mic-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(108,92,231,0.4); }
+        .mic-btn:active { transform: scale(0.95); }
+        .mic-btn.listening {
+            animation: pulse-mic 1.5s infinite;
+            box-shadow: 0 0 0 0 rgba(108,92,231,0.4);
+        }
+        .mic-btn svg { width: 28px; height: 28px; fill: white; }
+
+        @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 0 rgba(108,92,231,0.5); }
+            70% { box-shadow: 0 0 0 20px rgba(108,92,231,0); }
+            100% { box-shadow: 0 0 0 0 rgba(108,92,231,0); }
+        }
+
+        .mic-ring {
+            position: absolute;
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            border: 2px solid rgba(108,92,231,0.2);
+        }
+
+        .voice-indicator {
+            font-size: 13px;
+            color: var(--text-muted);
+            min-height: 20px;
+        }
+        .voice-indicator.active { color: var(--accent); }
+
+        .text-input-row {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .text-input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid rgba(108,92,231,0.2);
+            border-radius: 24px;
+            padding: 12px 20px;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .text-input:focus { border-color: var(--primary); }
+        .text-input::placeholder { color: var(--text-muted); }
+
+        .send-btn {
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            background: var(--gradient);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .send-btn:hover { transform: scale(1.05); }
+        .send-btn svg { width: 20px; height: 20px; fill: white; }
+
+        /* Level Badge */
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(253,203,110,0.15);
+            color: var(--warning);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Word card in chat */
+        .word-card {
+            background: rgba(108,92,231,0.08);
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+
+        /* Difficulty tags */
+        .diff-tag {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .diff-tag.easy { background: rgba(0,184,148,0.2); color: var(--success); }
+        .diff-tag.medium { background: rgba(253,203,110,0.2); color: var(--warning); }
+        .diff-tag.hard { background: rgba(255,107,107,0.2); color: var(--error); }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container { padding: 12px; }
+            .logo { font-size: 22px; }
+            .stats-bar { gap: 8px; }
+            .stat { padding: 8px 12px; min-width: 80px; }
+            .stat-value { font-size: 18px; }
+            .message { max-width: 92%; }
+            .chat-area { max-height: 45vh; }
+        }
+
+        /* Scrollbar */
+        .chat-area::-webkit-scrollbar { width: 4px; }
+        .chat-area::-webkit-scrollbar-track { background: transparent; }
+        .chat-area::-webkit-scrollbar-thumb {
+            background: rgba(108,92,231,0.3);
+            border-radius: 4px;
+        }
+
+        /* Speaker icon in messages */
+        .speak-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--primary-light);
+            font-size: 16px;
+            padding: 2px 4px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .speak-btn:hover { opacity: 1; }
+
+        .typing-dots {
+            display: inline-flex;
+            gap: 4px;
+            padding: 4px 0;
+        }
+        .typing-dots span {
+            width: 6px; height: 6px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typing 1.2s infinite;
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        .streak-fire { font-size: 16px; }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-card);
+            border: 1px solid rgba(108,92,231,0.3);
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 14px;
+            z-index: 100;
+            animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s forwards;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo">Vocab<span>Voice</span> 🎙️</div>
+            <div class="subtitle">Your AI-powered voice vocabulary coach</div>
+        </header>
+
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-value" id="wordsLearned">0</div>
+                <div class="stat-label">Learned</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="quizScore">0%</div>
+                <div class="stat-label">Quiz Score</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="streak">0 🔥</div>
+                <div class="stat-label">Streak</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="levelBadge">Starter</div>
+                <div class="stat-label">Level</div>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea"></div>
+
+        <div class="controls">
+            <div class="voice-indicator" id="voiceIndicator">Tap the mic or type below</div>
+            <div class="mic-container">
+                <div class="mic-ring"></div>
+                <button class="mic-btn" id="micBtn" title="Hold to speak">
+                    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                </button>
+            </div>
+            <div class="text-input-row">
+                <input type="text" class="text-input" id="textInput" placeholder="Or type your answer here..." autocomplete="off">
+                <button class="send-btn" id="sendBtn" title="Send">
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // =============================================
+    // VOCABULARY DATABASE
+    // =============================================
+    const VOCAB_DB = [
+        // Easy
+        { word: "Benevolent", phonetic: "/bəˈnev.əl.ənt/", pos: "adjective", difficulty: "easy",
+          definition: "Well-meaning and kindly; showing goodwill",
+          example: "The benevolent teacher stayed after school to help struggling students.",
+          synonyms: ["kind", "generous", "charitable"], antonyms: ["malevolent", "cruel"] },
+
+        { word: "Candid", phonetic: "/ˈkæn.dɪd/", pos: "adjective", difficulty: "easy",
+          definition: "Truthful and straightforward; frank",
+          example: "She gave a candid interview about her struggles with anxiety.",
+          synonyms: ["honest", "frank", "open"], antonyms: ["deceptive", "guarded"] },
+
+        { word: "Diligent", phonetic: "/ˈdɪl.ɪ.dʒənt/", pos: "adjective", difficulty: "easy",
+          definition: "Having or showing care and effort in one's work",
+          example: "The diligent student reviewed her notes every evening before bed.",
+          synonyms: ["hardworking", "industrious", "meticulous"], antonyms: ["lazy", "careless"] },
+
+        { word: "Eloquent", phonetic: "/ˈel.ə.kwənt/", pos: "adjective", difficulty: "easy",
+          definition: "Fluent or persuasive in speaking or writing",
+          example: "His eloquent speech moved the entire audience to tears.",
+          synonyms: ["articulate", "expressive", "persuasive"], antonyms: ["inarticulate", "tongue-tied"] },
+
+        { word: "Frugal", phonetic: "/ˈfruː.ɡəl/", pos: "adjective", difficulty: "easy",
+          definition: "Sparing or economical with money or resources",
+          example: "Living a frugal lifestyle helped her save enough for a house.",
+          synonyms: ["thrifty", "economical", "prudent"], antonyms: ["wasteful", "extravagant"] },
+
+        // Medium
+        { word: "Ephemeral", phonetic: "/ɪˈfem.ər.əl/", pos: "adjective", difficulty: "medium",
+          definition: "Lasting for a very short time",
+          example: "The beauty of cherry blossoms is ephemeral, lasting only a few days.",
+          synonyms: ["fleeting", "transient", "momentary"], antonyms: ["permanent", "enduring"] },
+
+        { word: "Pragmatic", phonetic: "/præɡˈmæt.ɪk/", pos: "adjective", difficulty: "medium",
+          definition: "Dealing with things sensibly and realistically",
+          example: "She took a pragmatic approach to solving the company's financial problems.",
+          synonyms: ["practical", "realistic", "sensible"], antonyms: ["idealistic", "impractical"] },
+
+        { word: "Ubiquitous", phonetic: "/juːˈbɪk.wɪ.təs/", pos: "adjective", difficulty: "medium",
+          definition: "Present, appearing, or found everywhere",
+          example: "Smartphones have become ubiquitous in modern society.",
+          synonyms: ["omnipresent", "pervasive", "universal"], antonyms: ["rare", "scarce"] },
+
+        { word: "Resilient", phonetic: "/rɪˈzɪl.i.ənt/", pos: "adjective", difficulty: "medium",
+          definition: "Able to recover quickly from difficult conditions",
+          example: "The resilient community rebuilt their town after the devastating earthquake.",
+          synonyms: ["tough", "adaptable", "hardy"], antonyms: ["fragile", "vulnerable"] },
+
+        { word: "Ambiguous", phonetic: "/æmˈbɪɡ.ju.əs/", pos: "adjective", difficulty: "medium",
+          definition: "Open to more than one interpretation; unclear",
+          example: "The contract's ambiguous language led to a dispute between the two parties.",
+          synonyms: ["vague", "unclear", "equivocal"], antonyms: ["clear", "unambiguous"] },
+
+        { word: "Meticulous", phonetic: "/məˈtɪk.jə.ləs/", pos: "adjective", difficulty: "medium",
+          definition: "Showing great attention to detail; very careful",
+          example: "The meticulous architect checked every measurement twice before finalizing the blueprint.",
+          synonyms: ["thorough", "precise", "careful"], antonyms: ["careless", "sloppy"] },
+
+        { word: "Verbose", phonetic: "/vɜːˈboʊs/", pos: "adjective", difficulty: "medium",
+          definition: "Using more words than needed; wordy",
+          example: "His verbose emails were difficult to read because they buried key points in unnecessary detail.",
+          synonyms: ["wordy", "long-winded", "prolix"], antonyms: ["concise", "succinct"] },
+
+        // Hard
+        { word: "Sycophant", phonetic: "/ˈsɪk.ə.fænt/", pos: "noun", difficulty: "hard",
+          definition: "A person who acts obsequiously to gain advantage; a flatterer",
+          example: "The CEO surrounded himself with sycophants who never challenged his decisions.",
+          synonyms: ["flatterer", "toady", "yes-man"], antonyms: ["critic", "detractor"] },
+
+        { word: "Recalcitrant", phonetic: "/rɪˈkæl.sɪ.trənt/", pos: "adjective", difficulty: "hard",
+          definition: "Having an obstinately uncooperative attitude",
+          example: "The recalcitrant student refused to follow any of the classroom rules.",
+          synonyms: ["defiant", "unruly", "stubborn"], antonyms: ["compliant", "obedient"] },
+
+        { word: "Perspicacious", phonetic: "/ˌpɜː.spɪˈkeɪ.ʃəs/", pos: "adjective", difficulty: "hard",
+          definition: "Having a ready insight into and understanding of things",
+          example: "The perspicacious detective noticed a clue that everyone else had overlooked.",
+          synonyms: ["insightful", "perceptive", "astute"], antonyms: ["obtuse", "unperceptive"] },
+
+        { word: "Obfuscate", phonetic: "/ˈɒb.fʌ.skeɪt/", pos: "verb", difficulty: "hard",
+          definition: "To make unclear or difficult to understand",
+          example: "Politicians often obfuscate the truth with complicated jargon.",
+          synonyms: ["confuse", "obscure", "muddle"], antonyms: ["clarify", "illuminate"] },
+
+        { word: "Ineffable", phonetic: "/ɪˈnef.ə.bəl/", pos: "adjective", difficulty: "hard",
+          definition: "Too great or extreme to be expressed in words",
+          example: "The ineffable beauty of the aurora borealis left them speechless.",
+          synonyms: ["indescribable", "inexpressible", "unutterable"], antonyms: ["describable", "definable"] },
+
+        { word: "Loquacious", phonetic: "/ləˈkweɪ.ʃəs/", pos: "adjective", difficulty: "hard",
+          definition: "Tending to talk a great deal; very talkative",
+          example: "My loquacious neighbor can turn a two-minute conversation into an hour-long chat.",
+          synonyms: ["talkative", "garrulous", "chatty"], antonyms: ["taciturn", "reticent"] },
+
+        { word: "Sanguine", phonetic: "/ˈsæŋ.ɡwɪn/", pos: "adjective", difficulty: "hard",
+          definition: "Optimistic or positive, especially in a difficult situation",
+          example: "Despite the setbacks, the team remained sanguine about meeting the deadline.",
+          synonyms: ["optimistic", "hopeful", "confident"], antonyms: ["pessimistic", "gloomy"] },
+
+        { word: "Cogent", phonetic: "/ˈkoʊ.dʒənt/", pos: "adjective", difficulty: "medium",
+          definition: "Clear, logical, and convincing",
+          example: "The lawyer presented a cogent argument that swayed the jury in her favor.",
+          synonyms: ["compelling", "convincing", "persuasive"], antonyms: ["weak", "unconvincing"] },
+
+        { word: "Anomaly", phonetic: "/əˈnɒm.ə.li/", pos: "noun", difficulty: "medium",
+          definition: "Something that deviates from what is standard or expected",
+          example: "The warm weather in December was an anomaly for the northern region.",
+          synonyms: ["irregularity", "aberration", "oddity"], antonyms: ["norm", "regularity"] },
+
+        { word: "Cacophony", phonetic: "/kəˈkɒf.ə.ni/", pos: "noun", difficulty: "hard",
+          definition: "A harsh, unpleasant mixture of sounds",
+          example: "The cacophony of car horns and construction drills made it impossible to concentrate.",
+          synonyms: ["discord", "dissonance", "din"], antonyms: ["harmony", "melody"] },
+    ];
+
+    // =============================================
+    // APP STATE
+    // =============================================
+    let state = {
+        wordsLearned: new Set(),
+        quizCorrect: 0,
+        quizTotal: 0,
+        streak: 0,
+        bestStreak: 0,
+        currentMode: null,         // 'learn' | 'quiz' | 'spelling' | null
+        currentWord: null,
+        awaitingAnswer: false,
+        conversationHistory: [],
+        learnedWords: JSON.parse(localStorage.getItem('vocabvoice_learned') || '[]'),
+    };
+
+    // Load saved state
+    try {
+        const saved = JSON.parse(localStorage.getItem('vocabvoice_state'));
+        if (saved) {
+            state.wordsLearned = new Set(saved.wordsLearned || []);
+            state.quizCorrect = saved.quizCorrect || 0;
+            state.quizTotal = saved.quizTotal || 0;
+            state.streak = saved.streak || 0;
+            state.bestStreak = saved.bestStreak || 0;
+        }
+    } catch(e) {}
+
+    function saveState() {
+        localStorage.setItem('vocabvoice_state', JSON.stringify({
+            wordsLearned: [...state.wordsLearned],
+            quizCorrect: state.quizCorrect,
+            quizTotal: state.quizTotal,
+            streak: state.streak,
+            bestStreak: state.bestStreak,
+        }));
+    }
+
+    // =============================================
+    // SPEECH SYNTHESIS
+    // =============================================
+    const synth = window.speechSynthesis;
+    let preferredVoice = null;
+
+    function loadVoices() {
+        const voices = synth.getVoices();
+        // Prefer natural English voices
+        preferredVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) ||
+                         voices.find(v => v.lang.startsWith('en-US')) ||
+                         voices.find(v => v.lang.startsWith('en')) ||
+                         voices[0];
+    }
+    synth.onvoiceschanged = loadVoices;
+    loadVoices();
+
+    function speak(text, rate = 1.0) {
+        return new Promise((resolve) => {
+            synth.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            if (preferredVoice) utter.voice = preferredVoice;
+            utter.rate = rate;
+            utter.pitch = 1.0;
+            utter.onend = resolve;
+            utter.onerror = resolve;
+            synth.speak(utter);
+        });
+    }
+
+    function speakWord(word) {
+        speak(word, 0.85);
+    }
+
+    // =============================================
+    // SPEECH RECOGNITION
+    // =============================================
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isListening = false;
+
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            isListening = true;
+            micBtn.classList.add('listening');
+            voiceIndicator.textContent = '🎤 Listening...';
+            voiceIndicator.classList.add('active');
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(r => r[0].transcript)
+                .join('');
+            const isFinal = event.results[event.results.length - 1].isFinal;
+            voiceIndicator.textContent = `🎤 "${transcript}"`;
+            if (isFinal) {
+                handleUserInput(transcript);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                voiceIndicator.textContent = `Couldn't hear that. Try again or type below.`;
+            } else {
+                voiceIndicator.textContent = 'Tap the mic or type below';
+            }
+            voiceIndicator.classList.remove('active');
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            voiceIndicator.classList.remove('active');
+            if (!voiceIndicator.textContent.startsWith('🎤'))
+                voiceIndicator.textContent = 'Tap the mic or type below';
+        };
+    }
+
+    // =============================================
+    // DOM REFERENCES
+    // =============================================
+    const chatArea = document.getElementById('chatArea');
+    const micBtn = document.getElementById('micBtn');
+    const textInput = document.getElementById('textInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const voiceIndicator = document.getElementById('voiceIndicator');
+
+    // =============================================
+    // UI HELPERS
+    // =============================================
+    function updateStats() {
+        document.getElementById('wordsLearned').textContent = state.wordsLearned.size;
+        const pct = state.quizTotal > 0 ? Math.round(state.quizCorrect / state.quizTotal * 100) : 0;
+        document.getElementById('quizScore').textContent = pct + '%';
+        document.getElementById('streak').textContent = state.streak + ' 🔥';
+
+        // Level
+        const count = state.wordsLearned.size;
+        let level = 'Starter';
+        if (count >= 15) level = 'Master';
+        else if (count >= 10) level = 'Advanced';
+        else if (count >= 5) level = 'Intermediate';
+        else if (count >= 2) level = 'Beginner';
+        document.getElementById('levelBadge').textContent = level;
+    }
+
+    function addMessage(content, sender = 'agent', doSpeak = true) {
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = sender === 'agent' ? '🤖' : '🎙️';
+
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.innerHTML = content;
+
+        div.appendChild(avatar);
+        div.appendChild(bubble);
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+
+        // Extract text for speech
+        if (doSpeak && sender === 'agent') {
+            const textOnly = bubble.innerText.replace(/🔊/g, '').trim();
+            if (textOnly.length < 500) speak(textOnly);
+        }
+    }
+
+    function addWordCard(wordObj) {
+        const diffClass = wordObj.difficulty;
+        const html = `
+            <span class="word-highlight">${wordObj.word} <button class="speak-btn" onclick="speakWord('${wordObj.word}')">🔊</button></span>
+            <span class="phonetic">${wordObj.phonetic} · ${wordObj.pos} · <span class="diff-tag ${diffClass}">${diffClass}</span></span>
+            <div class="definition">${wordObj.definition}</div>
+            <div class="example">"${wordObj.example}"</div>
+            <div style="margin-top:8px;font-size:12px;color:var(--text-muted)">
+                <b>Synonyms:</b> ${wordObj.synonyms.join(', ')}<br>
+                <b>Antonyms:</b> ${wordObj.antonyms.join(', ')}
+            </div>
+        `;
+        addMessage(html, 'agent', false);
+        speak(`${wordObj.word}. ${wordObj.definition}. For example: ${wordObj.example}`);
+    }
+
+    function showModeButtons() {
+        const html = `What would you like to do?
+            <div class="mode-buttons">
+                <button class="mode-btn" onclick="startLearn()">📚 Learn New Word</button>
+                <button class="mode-btn" onclick="startQuiz()">🧠 Quiz Me</button>
+                <button class="mode-btn" onclick="startSpelling()">✍️ Spelling Bee</button>
+                <button class="mode-btn" onclick="reviewWords()">📖 Review Learned</button>
+                <button class="mode-btn" onclick="wordOfDay()">⭐ Word of the Day</button>
+            </div>`;
+        addMessage(html, 'agent', true);
+    }
+
+    function showToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // =============================================
+    // CORE LOGIC
+    // =============================================
+
+    function getRandomWord(excludeSet = null) {
+        const pool = excludeSet
+            ? VOCAB_DB.filter(w => !excludeSet.has(w.word))
+            : VOCAB_DB;
+        if (pool.length === 0) return VOCAB_DB[Math.floor(Math.random() * VOCAB_DB.length)];
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function getNewWord() {
+        // Prefer words not yet learned
+        const unlearned = VOCAB_DB.filter(w => !state.wordsLearned.has(w.word));
+        if (unlearned.length === 0) return VOCAB_DB[Math.floor(Math.random() * VOCAB_DB.length)];
+        return unlearned[Math.floor(Math.random() * unlearned.length)];
+    }
+
+    // ----- LEARN MODE -----
+    window.startLearn = function() {
+        state.currentMode = 'learn';
+        const word = getNewWord();
+        state.currentWord = word;
+        state.wordsLearned.add(word.word);
+        updateStats();
+        saveState();
+
+        addWordCard(word);
+
+        setTimeout(() => {
+            addMessage(`Now try saying <b>"${word.word}"</b> to practice pronunciation! Or say <b>"next"</b> for another word.`, 'agent', true);
+            state.awaitingAnswer = true;
+        }, 3000);
+    };
+
+    // ----- QUIZ MODE -----
+    window.startQuiz = function() {
+        state.currentMode = 'quiz';
+        const word = VOCAB_DB[Math.floor(Math.random() * VOCAB_DB.length)];
+        state.currentWord = word;
+
+        const html = `🧠 <b>Quiz Time!</b><br><br>
+            What word matches this definition?<br>
+            <div class="definition" style="margin:8px 0">${word.definition}</div>
+            <div style="font-size:12px;color:var(--text-muted)">Hint: It starts with "<b>${word.word[0]}</b>" and has ${word.word.length} letters (${word.pos})</div>`;
+        addMessage(html, 'agent', false);
+        speak(`Quiz time! What word matches this definition? ${word.definition}. Hint: it starts with the letter ${word.word[0]}.`);
+        state.awaitingAnswer = true;
+    };
+
+    // ----- SPELLING BEE -----
+    window.startSpelling = function() {
+        state.currentMode = 'spelling';
+        const word = VOCAB_DB[Math.floor(Math.random() * VOCAB_DB.length)];
+        state.currentWord = word;
+
+        addMessage(`✍️ <b>Spelling Bee!</b><br><br>I'll say a word. You spell it!<br>
+            <div style="margin-top:6px">The word is: <button class="speak-btn" onclick="speakWord('${word.word}')" style="font-size:22px">🔊</button></div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${word.definition}</div>`, 'agent', false);
+        speak(`Spelling bee! Listen carefully and spell this word.`);
+        setTimeout(() => speakWord(word.word), 2500);
+        state.awaitingAnswer = true;
+    };
+
+    // ----- REVIEW -----
+    window.reviewWords = function() {
+        if (state.wordsLearned.size === 0) {
+            addMessage("You haven't learned any words yet! Let's start with <b>Learn New Word</b> first. 📚", 'agent', true);
+            return;
+        }
+        const learned = [...state.wordsLearned];
+        let html = `📖 <b>Words you've learned (${learned.length}):</b><br><br>`;
+        learned.forEach((w, i) => {
+            const wordObj = VOCAB_DB.find(x => x.word === w);
+            if (wordObj) {
+                html += `<b>${i+1}.</b> <span style="color:var(--accent)">${w}</span> — ${wordObj.definition}<br>`;
+            }
+        });
+        html += `<br>Keep going! ${VOCAB_DB.length - learned.length} words remaining.`;
+        addMessage(html, 'agent', false);
+        speak(`You've learned ${learned.length} words so far. ${VOCAB_DB.length - learned.length} words remaining. Keep going!`);
+
+        setTimeout(showModeButtons, 1000);
+    };
+
+    // ----- WORD OF THE DAY -----
+    window.wordOfDay = function() {
+        // Deterministic based on date
+        const today = new Date();
+        const idx = (today.getFullYear() * 366 + today.getMonth() * 31 + today.getDate()) % VOCAB_DB.length;
+        const word = VOCAB_DB[idx];
+        state.currentWord = word;
+        state.currentMode = 'learn';
+        state.wordsLearned.add(word.word);
+        updateStats();
+        saveState();
+
+        addMessage(`⭐ <b>Word of the Day</b>`, 'agent', false);
+        addWordCard(word);
+        setTimeout(() => {
+            addMessage(`Try using <b>"${word.word}"</b> in a sentence! Say it out loud or type it below.`, 'agent', true);
+            state.awaitingAnswer = true;
+        }, 3500);
+    };
+
+    // =============================================
+    // INPUT HANDLING
+    // =============================================
+    function handleUserInput(input) {
+        const trimmed = input.trim();
+        if (!trimmed) return;
+
+        addMessage(trimmed, 'user', false);
+
+        const lower = trimmed.toLowerCase();
+
+        // Navigation commands
+        if (lower.includes('learn') && (lower.includes('new') || lower.includes('word'))) {
+            startLearn(); return;
+        }
+        if (lower.includes('quiz') || lower.includes('test')) {
+            startQuiz(); return;
+        }
+        if (lower.includes('spell')) {
+            startSpelling(); return;
+        }
+        if (lower.includes('review') || lower.includes('show') && lower.includes('learned')) {
+            reviewWords(); return;
+        }
+        if (lower.includes('word of the day') || lower === 'wotd') {
+            wordOfDay(); return;
+        }
+        if (lower === 'help' || lower === 'menu' || lower === 'start') {
+            showModeButtons(); return;
+        }
+        if (lower === 'next' || lower === 'skip') {
+            if (state.currentMode === 'learn') { startLearn(); return; }
+            if (state.currentMode === 'quiz') { startQuiz(); return; }
+            if (state.currentMode === 'spelling') { startSpelling(); return; }
+            showModeButtons(); return;
+        }
+        if (lower === 'reset' || lower === 'clear') {
+            state.wordsLearned = new Set();
+            state.quizCorrect = 0;
+            state.quizTotal = 0;
+            state.streak = 0;
+            saveState();
+            updateStats();
+            addMessage("Progress reset! Let's start fresh. 🔄", 'agent', true);
+            setTimeout(showModeButtons, 1500);
+            return;
+        }
+
+        // Handle answers
+        if (state.awaitingAnswer && state.currentWord) {
+            const target = state.currentWord.word.toLowerCase();
+
+            if (state.currentMode === 'quiz' || state.currentMode === 'spelling') {
+                state.quizTotal++;
+                // Fuzzy match: allow minor speech recognition errors
+                const similarity = getSimilarity(lower, target);
+
+                if (similarity > 0.8 || lower.includes(target) || target.includes(lower)) {
+                    state.quizCorrect++;
+                    state.streak++;
+                    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+                    state.wordsLearned.add(state.currentWord.word);
+                    updateStats();
+                    saveState();
+
+                    let praise = ['Excellent! 🎉', 'Brilliant! 🌟', 'Perfect! ✨', 'Nailed it! 💪', 'Outstanding! 🏆'][Math.floor(Math.random()*5)];
+                    if (state.streak >= 3) praise += ` ${state.streak} in a row! 🔥`;
+
+                    addMessage(`<span class="result-correct">${praise}</span><br>
+                        The answer is <b>${state.currentWord.word}</b>.
+                        <div class="mode-buttons" style="margin-top:8px">
+                            <button class="mode-btn" onclick="${state.currentMode === 'quiz' ? 'startQuiz()' : 'startSpelling()'}">Next Question →</button>
+                            <button class="mode-btn" onclick="showModeButtons()">Change Mode</button>
+                        </div>`, 'agent', true);
+                } else {
+                    state.streak = 0;
+                    updateStats();
+                    saveState();
+
+                    addMessage(`<span class="result-wrong">Not quite!</span> The correct answer is <b>${state.currentWord.word}</b> (${state.currentWord.phonetic})
+                        <div class="definition" style="margin:6px 0">${state.currentWord.definition}</div>
+                        <div class="mode-buttons" style="margin-top:8px">
+                            <button class="mode-btn" onclick="${state.currentMode === 'quiz' ? 'startQuiz()' : 'startSpelling()'}">Try Another →</button>
+                            <button class="mode-btn" onclick="showModeButtons()">Change Mode</button>
+                        </div>`, 'agent', true);
+                }
+                state.awaitingAnswer = false;
+                return;
+            }
+
+            if (state.currentMode === 'learn') {
+                // Pronunciation practice - be encouraging
+                const similarity = getSimilarity(lower, target);
+                if (similarity > 0.6) {
+                    state.streak++;
+                    updateStats();
+                    addMessage(`<span class="result-correct">Great pronunciation! 👏</span> You said "${trimmed}" — that's right!
+                        <div class="mode-buttons" style="margin-top:8px">
+                            <button class="mode-btn" onclick="startLearn()">Next Word →</button>
+                            <button class="mode-btn" onclick="startQuiz()">Quiz Me 🧠</button>
+                            <button class="mode-btn" onclick="showModeButtons()">Menu</button>
+                        </div>`, 'agent', true);
+                } else {
+                    addMessage(`I heard "${trimmed}". The word is <b>${state.currentWord.word}</b>. Try saying it again! <button class="speak-btn" onclick="speakWord('${state.currentWord.word}')">🔊 Hear it</button>`, 'agent', true);
+                    return; // Keep awaiting
+                }
+                state.awaitingAnswer = false;
+                return;
+            }
+        }
+
+        // Default: show menu
+        addMessage(`I didn't catch that. Say <b>"learn"</b>, <b>"quiz"</b>, <b>"spelling"</b>, or <b>"help"</b> to get started!`, 'agent', true);
+    }
+
+    // Simple string similarity (Dice coefficient)
+    function getSimilarity(a, b) {
+        a = a.toLowerCase().replace(/[^a-z]/g, '');
+        b = b.toLowerCase().replace(/[^a-z]/g, '');
+        if (a === b) return 1;
+        if (a.length < 2 || b.length < 2) return 0;
+        const bigrams = new Map();
+        for (let i = 0; i < a.length - 1; i++) {
+            const bi = a.substring(i, i + 2);
+            bigrams.set(bi, (bigrams.get(bi) || 0) + 1);
+        }
+        let matches = 0;
+        for (let i = 0; i < b.length - 1; i++) {
+            const bi = b.substring(i, i + 2);
+            const count = bigrams.get(bi);
+            if (count > 0) { bigrams.set(bi, count - 1); matches++; }
+        }
+        return (2.0 * matches) / (a.length + b.length - 2);
+    }
+
+    // =============================================
+    // EVENT LISTENERS
+    // =============================================
+    micBtn.addEventListener('click', () => {
+        if (!recognition) {
+            voiceIndicator.textContent = 'Voice not supported in this browser. Use Chrome!';
+            return;
+        }
+        if (isListening) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    });
+
+    sendBtn.addEventListener('click', () => {
+        const val = textInput.value.trim();
+        if (val) { handleUserInput(val); textInput.value = ''; }
+    });
+
+    textInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const val = textInput.value.trim();
+            if (val) { handleUserInput(val); textInput.value = ''; }
+        }
+    });
+
+    // =============================================
+    // INIT
+    // =============================================
+    updateStats();
+
+    // Welcome message
+    setTimeout(() => {
+        addMessage(`👋 <b>Welcome to VocabVoice!</b><br><br>I'm your AI vocabulary coach. I'll help you learn, pronounce, and remember new words through voice interaction.<br><br>
+            <b>How it works:</b><br>
+            🎙️ Tap the mic button and speak, or type below<br>
+            📚 Learn new words with definitions and examples<br>
+            🧠 Test yourself with quizzes and spelling bees<br>
+            📊 Track your progress as you level up!`, 'agent', false);
+
+        speak("Welcome to VocabVoice! I'm your AI vocabulary coach. Let's get started!");
+
+        setTimeout(showModeButtons, 1500);
+    }, 500);
+
+    </script>
+</body>
+</html>
